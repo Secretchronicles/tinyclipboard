@@ -1,0 +1,73 @@
+.\" tinyclipboard - a cross-platform C library for accessing the clipboard.
+.\"
+.\" Copyright © 2016 Marvin Gülker <m-guelker@guelkerdev.de>
+.\"
+.\" All rights reserved. See the README and LICENSE files for the
+.\" licensing conditions.
+.TH tiny_clipversion "3" "January 2016" "Marvin Gülker" "tinyclipboard"
+.SH NAME
+tiny_clipversion \- tinyclipboard version information
+
+.SH SYNOPSIS
+.nf
+.B #include <tinyclipboard.h>
+.sp
+.B #define TINYCLIPBOARD_VERSION
+.sp
+.B const char* tiny_clipversion\fR(\fBvoid\fR);
+
+.SH DESCRIPTION
+.PP
+The \fBtiny_clipversion()\fR function gives information about the
+version of the \fItinyclipboard\fR library in use, condensed into one
+string.
+
+.PP
+The \fBTINYCLIPBOARD_VERSION\fR macro provides the same information,
+but separated into components you can check against. It is defined as
+the version number as an ordinary number of form \fBYYYYMMPPL\fR,
+where \fBYYYY\fR denotes the year, \fBMM\fR denotes the month (with a
+leading zero if it is a month < 10), \fBPP\fR denotes the patch
+release number (again with a leading zero or even with two zeros for
+the first release in a month) and \fBL\fR is literal (i.e. denotes a
+\fBlong int\fR constant value). For example, it may have the value
+\fB20160100L\fR, which means the release was made in January 2016, and
+it was the first of any releases in January. If it had the value
+\fB20160101L\fR, then it would be the second release in January 2016.
+
+.SH RETURN VALUE
+.PP
+This function returns a pointer to statically allocated memory that
+contains the version information as a \fBNUL\fR-terminated string that
+does not end with a newline. It must not be freed.
+
+.PP
+The macro is defined as a literal constant of type \fBlong int\fR.
+
+.SH ERRORS
+.PP
+None.
+
+.SH EXAMPLES
+.PP
+None.
+
+.SH NOTES
+.PP
+The \fItinyclipboard\fR library follows a simplistic versioning
+scheme that is mostly based on the release date. The version number is
+of form \fBYY.MM\fR, which refers to the shorted year and the number
+of the month the release was made in. If multiple releases are made in
+the same month, the version number becomes \fBYY.MM.PP\fR, where
+\fBPP\fR is the number of the followup release (\fBPP\fR can never be
+zero, as it then falls off). \fBPP\fR has no leading zeros, but
+\fBMM\fR has. Note that it it rather unlikely that I do more than nine
+releases in a month.
+
+.SH SEE ALSO
+.PP
+None.
+
+.SH AUTHOR
+.PP
+The \fItinyclipboard\fR library was written by Marvin Gülker <m-guelker@guelkerdev.de>.

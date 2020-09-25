@@ -1,0 +1,235 @@
+.\" tinyclipboard - a cross-platform C library for accessing the clipboard.
+.\"
+.\" Copyright © 2016 Marvin Gülker <m-guelker@guelkerdev.de>
+.\"
+.\" All rights reserved. See the README and LICENSE files for the
+.\" licensing conditions.
+.TH tiny_clipread "3" "January 2016" "Marvin Gülker" "tinyclipboard"
+.SH NAME
+tiny_clipread \- Read from the OS clipboard
+
+.SH SYNOPSIS
+.nf
+.B #include <tinyclipboard.h>
+.sp
+.B char* tiny_clipread\fR(\fBint*\fR \fIlen\fR);
+
+.SH DESCRIPTION
+.PP
+The \fBtiny_clipread()\fR function reads arbitary data from the
+operating system’s clipboard, allocates a new string by means of
+\fBmalloc(3)\fR, copies the data there, and returns the newly
+allocated string. In the \fIlen\fR argument it returns the number of
+bytes allocated and returned. In case of failure no string is
+allocated, \fBNULL\fR is returned and \fI*len\fR is left
+untouched.
+
+.PP
+The returned string is guaranteed to end with a \fBNUL\fR byte, but if
+you want to handle \fBNUL\fR bytes within the clipboard data, you
+should instead rely on the value returned in the \fIlen\fR
+argument. If \fIlen\fR is \fBNULL\fR, the argument is ignored (and you
+have to rely on the terminating \fBNUL\fR of the returned string
+alone).
+
+.PP
+The data returned is encoded in UTF-8 regardless of the current
+locale’s encoding. This includes Win32 systems.
+
+.PP
+The caller of this function is obleged to \fBfree(3)\fR the memory
+returned.
+
+.SH RETURN VALUE
+.PP
+On a successful retrieval, the \fBtiny_clipread()\fR function returns
+a dynamically allocated copy of the data in the operating system’s
+clipboard that must be handed to \fBfree(3)\fR once you are done with
+it. If the retrieval fails, the function returns \fBNULL\fR and sets
+\fIerrno\fR to indicate the error.
+
+.SH ERRORS
+.SS X11 systems
+.PP
+This function indicates the following errors on systems using an X11
+server for graphics management:
+
+.TP
+.BR EAGAIN
+There is no clipboard owner currently which could be queried for
+anything.
+.TP
+.BR ECANCELED
+Unexpected function failure after using an Xlib function as advertised
+by a prior return value.  Encountering this \fIerrno\fR value might
+indicate a bug in \fItinyclipboard\fR.
+.TP
+.BR ECONNREFUSED
+Failed to connect to the X server. This most likely means that your
+program is not run from within a graphical environment (e.g., from the
+Linux virtual console).
+.TP
+.BR ENOTSUP
+The clipboard contains non-text data.
+.TP
+.BR EOVERFLOW
+The number of bytes in the clipboard was too large to be stored in an
+\fBint\fR. X11 supports much larger clipboard texts (actually
+\fBunsigned long\fR bytes long ones), but \fBint\fR is the only type
+that works cross-platform for all clipboard APIs and is thus the
+maximum capacity supported by \fItinylcipboard\fR.
+
+.SS Win32 systems
+.PP
+This function indicates the following errors on Windows systems:
+
+.TP
+.BR EAGAIN
+Another process has opened the clipboard currently.
+.TP
+.BR ECANCELED
+Unexpected function failure after using a Windows API function as
+advertised by a prior return value.  Encountering this \fIerrno\fR
+value might indicate a bug in \fItinyclipboard\fR.
+.TP
+.BR EILSEQ
+The clipboard's content was advertised as text, but was invalid
+UTF-16 (in contrast to \fBENOTSUP\fR, which means the clipboard's
+content was not even advertised as text).
+.TP
+.BR ENOTSUP
+The clipboard contains non-text data.
+
+.SH EXAMPLES
+.SS Reading a string from the clipboard
+.PP
+This example reads an ordinary string from the operating system’s
+clipboard.
+
+.sp
+.RS 4
+.nf
+\fB
+#include <stdio.h>
+#include <errno.h>
+#include <tinyclipboard.h>
+
+int main()
+{
+  int len = 0;
+  char* str = tiny_clipread(&len);
+
+  if (str) {
+    printf("Read %d bytes from the clipboard: %s\\n", len, str);
+  }
+  else {
+    perror("Failed to read from the clipboard");
+    return 1;
+  }
+
+  /* Do not forget to free the returned pointer. */
+  free(str);
+
+  return 0;
+}
+\fR
+.RE
+
+.SH NOTES
+.PP
+The clipboard is a highly operating-system specific resource. The
+\fItinyclipboard\fR library strives to hide the complexities of
+certain system’s clipboard systems (especially X11’s) behind a set of
+simple, highlevel functions that allow the programmer to uniformly
+access any supported operating system’s clipboard system. This
+highlevel interface sacrifices access to some more granular features
+each of the respective systems provides, but if you need these, you
+should probably not be using a cross-platform clipboard library
+anyway.
+
+.PP
+Across all operating systems and graphics stacks, the
+\fBtiny_clipread()\fR function does not require your application to be
+a GUI application. However, it opens invisible windows to interact
+with the clipboard if it is required. From this follows that while you
+do not have to create your application as a GUI application, you have
+to link in your system’s native graphics library (e.g., \fB-lX11\fR on
+Linux) and your users must be running your program in their graphical
+environment. Running your program from a Linux virtual console will
+not work (the function will return -1 and set \fIerrno\fR to
+\fBECONNREFUSED\fR).
+
+.PP
+What follows are descriptions of certain problems that arise with any
+one supported operating system’s clipboard system.
+
+.SS Unix/X11
+.PP
+The X11 clipboard system is really complex. It consists of three
+so-called “selections” that can be “owned” at any time by any X
+client. The owner of such a selection is responsible for serving the
+requests other X clients make to him for access of the clipboard’s
+content. As a consequence, \fIthe clipboard’s content is not a global
+resource on X11\fR. Global is only the knowledge of the client owning
+the selection. Due to this ownership system, the content of any
+selection vanishes if the owner X11 connection dies (= the window
+closes).
+
+.PP
+The three selections are called \fBPRIMARY\fR, \fBSECONDARY\fR, and
+\fBCLIPBOARD\fR. The first two are unique to X11 and have no
+counterpart on other graphics systems; the \fBPRIMARY\fR selection can
+be set in most applications by marking text with the mouse cursor, and
+retrieved by pressing the middle mouse button. The \fBSECONDARY\fR
+selection is not used by anybody. The \fBCLIPBOARD\fR selection is
+usually accessed via pull-down menus or the well-known key
+combinations \fBCTRL+C\fR and \fBCTRL+V\fR; this is the only selection
+\fItinyclipboard\fR gives you access to for the sake of simplicity. It
+is also the only selection that ordinary users know about.
+
+.SS Win32
+.PP
+The clipboard system on Windows is modelled around a global pointer as
+a resource shared between multiple applications. When an application
+wants to write to the clipboard, it first opens the global clipboard
+resource, excluding everybody else from accessing it (even for read
+access). It then empties the clipboard, which causes the Win32
+system's OS kernel to free the previous global pointer (yes, the
+pointer is freed by the kernel, not by the application). The kernel
+immediately afterwards assigns ownership of the clipboard to the calling
+process, which is now obleged to allocate a new buffer, store its data
+in it, and hand the pointer to this buffer over to the clipboard
+system. When done, the process closes the clipboard, but formally
+remains owner of the clipboard until another process wants to write
+into the clipboard or it exits. As far as I was able to see, this
+ownership does not involve any duties if one does not use delayed
+rendering (which \fItinyclipboard\fR does not do).
+
+.PP
+Since the OS kernel manages the memory of the clipboard content, the
+content does not vanish if the application closes as it does with
+X11 (see above).
+
+.PP
+In contrast to X11 (and even \fBtiny_clipwrite(3)\fR and
+\fBtiny_clipnwrite(3)\fR on Win32 systems) read access to the
+clipboard does not require an (invisible) window to be created, but
+merely acquiring the clipboard for a moment. On Windows, reading the
+clipboard thus does not involve any GUI functionality.
+
+.PP
+It appears to be possible to write \fBNUL\fR bytes into the Windows
+clipboard, but it is impossible to retrieve them again from there as
+the clipboard functions available from the Win32API do not support
+querying the size of the clipboard. They assume any text on the
+clipboard is terminated with a \fBNUL\fR byte. For the sake of
+portability, you should thus refrain from using \fBNUL\fR bytes in
+your clipboard content if your application needs to run on Windows.
+
+.SH SEE ALSO
+.PP
+.B tiny_cipwrite(3) tiny_clipnwrite(3)
+
+.SH AUTHOR
+.PP
+The \fItinyclipboard\fR library was written by Marvin Gülker <m-guelker@guelkerdev.de>.

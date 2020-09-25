@@ -1,0 +1,12 @@
+*.a
+*.so.*
+*.1
+*.o
+*.bak
+*.exe
+examples/read
+examples/write
+examples/write2
+examples/version
+examples/unicode
+html
